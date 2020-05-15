@@ -1,0 +1,199 @@
+openapi: 3.0.3
+
+info:
+  version: "0.61"
+  title: SENT GEO
+  description: SENT GEO REST API
+  contact:
+    name: Tomasz Jakub Rup
+    email: tomasz.rup@gmail.com
+
+paths:
+  /:
+    post:
+      operationId: add
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: "#/components/schemas/Row"
+        required: true
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response"
+        400:
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        500:
+          $ref: "#/components/responses/InternalServerError"
+        501:
+          $ref: "#/components/responses/NotImplemented"
+        503:
+          $ref: "#/components/responses/ServiceUnavailable"
+      servers:
+        - url: https://di.sent.itl.waw.pl:{port}/{path}
+          description: Production server
+          variables:
+            port:
+              default: "443"
+            path:
+              default: "10000000-0001-1001-0001-0000000000001"
+        - url: https://di-test.sent.itl.waw.pl:{port}/{path}
+          description: Test server
+          variables:
+            port:
+              default: "443"
+            path:
+              default: "10000000-0001-1001-0001-0000000000001"
+
+components:
+  responses:
+    Unauthorized:
+      description: Unauthorized
+
+    InternalServerError:
+      description: Internal server error
+
+    NotImplemented:
+      description: Not implemented
+
+    ServiceUnavailable:
+      description: Service unavailable
+
+  schemas:
+    Response:
+      type: object
+      required:
+        - result
+      properties:
+        result:
+          type: string
+          enum:
+            - ok
+            - ERROR
+        code:
+          type: string
+        validation_error:
+          type: array
+          items:
+            type: string
+        warning:
+          type: array
+          items:
+            $ref: "#/components/schemas/Warning"
+
+    Warning:
+      type: object
+      properties:
+        tsp:
+          type: integer
+          format: int64
+        msg:
+          type: string
+        code:
+          type: string
+          enum:
+            - tsp-past
+            - tsp-future
+            - dev-not-tech
+            - dev-unknown
+            - not-pl
+        dev:
+          type: string
+        now:
+          type: integer
+          format: int64
+        action:
+          type: string
+          enum:
+            - pass
+            - drop
+        reason:
+          $ref: "#/components/schemas/Reason"
+
+    Reason:
+      type: object
+      properties:
+        id:
+          type: string
+        rule:
+          type: string
+        lon:
+          type: number
+        lat:
+          type: number
+    
+    Row:
+      type: object
+      required:
+        - brg
+        - dev
+        - lat
+        - lon
+        - spd
+        - acc
+        - tsp
+      properties:
+        id:
+          description: The unique identifier of the record in the source system, the variable used for verification purposes during the testing period.
+          type: string
+          minLength: 1
+          maxLength: 36
+        dev:
+          description: The unique identifier of the locator, the maximum length of 50 characters is allowed, small and uppercase Latin letters are allowed from the ranges (a-z) and (A-Z), digits (0-9), hyphen-minus (-),  underscore) (_), which are a subset of the ASCI characters (American Standard Code for Information Interchange).The size of letters is not distinguished.
+          type: string
+          minLength: 1
+          maxLength: 50
+          pattern: ^[a-zA-Z0-9\\-_]{1,50}$
+        lat:
+          description: "Latitude taken from the GPS transmitter, WGS reference system 84, recommended minimum number of decimal places: 6, maximum number of decimal places allowed: 10. If the data meets the condition lat < 49.0 or lat > 54.835778, the data is rejected."
+          type: number
+          minimum: -90.0
+          maximum: 90.0
+          multipleOf: 0.0000000001
+        lon:
+          description: "Longitude taken from the GPS transmitter, WGS reference system 84, recommended minimum number of decimal places: 6, maximum number of decimal places allowed: 10. If the data meets the condition lon < 14.116667 or lon > 24.15, the data is rejected. If the data meets the condition 54.9 - lat - 0.3*lon > 0 or  1.25 * lon + 20.375 - lat > 0 or lon > 19 AND lat > 54.5, the data is rejected."
+          type: number
+          minimum: -180.0
+          maximum: 180.0
+          multipleOf: 0.0000000001
+        alt:
+          description: "Ellipsoidal height taken from the GPS transmitter, unit [m], maximum number of decimal places allowed: 2."
+          type: number
+          nullable: true
+          minimum: -1000.0
+          maximum: 4000.0
+          multipleOf: 0.01
+        tsp:
+          description: "Timestamp includes date and time taken from the GPS transmitter, associated with the geographical position of the record, UTC time zone, SENT GEO timestamp is similar to Epoch / Unix Timestamp, but given to the microsecond (16 digits), this is the number of microseconds that have passed since 00:00:00 Coordinated Universal Time (UTC), Thursday, 1 January 1970, the minimum value indicates 2017.09.20 00:00:00 UTC, integer."
+          type: integer
+          format: int64
+          minimum: 1505865600000000
+        spd:
+          description: "Movement speed taken from the GPS transmitter - unit [m/s], maximum number of decimal places allowed: 2, maximum allowed speed: 56.00 [m/s]."
+          type: number
+          minimum: 0.0
+          maximum: 56.0
+          multipleOf: 0.01
+        acc:
+          description: "Location accuracy taken from the GPS transmitter - circle radius in meters, maximum number of decimal places allowed: 2."
+          type: number
+          minimum: 0.0
+          multipleOf: 0.01
+        brg:
+          description: "Azimuth - unit [grade], maximum number of decimal places allowed: 2."
+          type: number
+          minimum: 0.0
+          maximum: 360.0
+          multipleOf: 0.01
